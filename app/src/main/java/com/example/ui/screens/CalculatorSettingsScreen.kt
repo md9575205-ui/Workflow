@@ -16,8 +16,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -44,6 +48,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.data.AppThemeMode
 import com.example.data.DateHelper
 import com.example.data.PaySettingsEntity
 import kotlin.math.roundToInt
@@ -53,6 +58,7 @@ import kotlin.math.roundToInt
 fun CalculatorSettingsScreen(
     settings: PaySettingsEntity,
     onSaveSettings: (PaySettingsEntity) -> Unit,
+    onSelectThemeMode: (AppThemeMode) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 1. Interactive What-If Salary Estimator State
@@ -279,7 +285,95 @@ fun CalculatorSettingsScreen(
             }
         }
 
-        // Card 2: Persistent Pay Rate & Shift Rules Configuration
+        // Card 2: App Theme (Light / Dark / System)
+        item {
+            val activeThemeMode = AppThemeMode.fromKey(settings.themeMode)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("theme_settings_card"),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "Appearance & Theme",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Switch between Light theme, Dark theme, or System default",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        FilterChip(
+                            selected = activeThemeMode == AppThemeMode.LIGHT,
+                            onClick = { onSelectThemeMode(AppThemeMode.LIGHT) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.LightMode,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            label = { Text("Light Theme") },
+                            modifier = Modifier.testTag("theme_option_light")
+                        )
+
+                        FilterChip(
+                            selected = activeThemeMode == AppThemeMode.DARK,
+                            onClick = { onSelectThemeMode(AppThemeMode.DARK) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.DarkMode,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            label = { Text("Dark Theme") },
+                            modifier = Modifier.testTag("theme_option_dark")
+                        )
+
+                        FilterChip(
+                            selected = activeThemeMode == AppThemeMode.SYSTEM,
+                            onClick = { onSelectThemeMode(AppThemeMode.SYSTEM) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.BrightnessAuto,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            label = { Text("System Default") },
+                            modifier = Modifier.testTag("theme_option_system")
+                        )
+                    }
+                }
+            }
+        }
+
+        // Card 3: Persistent Pay Rate & Shift Rules Configuration
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),

@@ -33,4 +33,9 @@
     <string name="empty_month_subtitle">Tap any day from Monday to Saturday on the Weekly tab or use Quick Fill Mon–Sat to calculate your working hours and salary.</string>
     <string name="report_copied_message">Monthly salary report copied to clipboard</string>
     <string name="settings_saved_message">Pay rate and shift settings updated</string>
+    <string name="action_toggle_theme">Toggle Dark or Light Theme</string>
+    <string name="theme_section_title">App Theme</string>
+    <string name="theme_light">Light Theme</string>
+    <string name="theme_dark">Dark Theme</string>
+    <string name="theme_system">System Default</string>
 </resources>

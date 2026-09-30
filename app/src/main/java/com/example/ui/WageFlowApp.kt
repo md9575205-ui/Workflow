@@ -19,12 +19,15 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.DateRange
@@ -56,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.data.AppThemeMode
 import com.example.data.DateHelper
 import com.example.data.WageCalculator
 import com.example.ui.components.MonthlyReportDialog
@@ -73,6 +77,12 @@ fun WageFlowApp(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val systemDark = isSystemInDarkTheme()
+    val isCurrentlyDark = when (AppThemeMode.fromKey(state.settings.themeMode)) {
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+        AppThemeMode.SYSTEM -> systemDark
+    }
 
     // Handle Back navigation on secondary tabs
     BackHandler(enabled = state.currentTab != AppTab.WEEKLY_TRACKER) {
@@ -134,6 +144,20 @@ fun WageFlowApp(
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = { viewModel.toggleDarkLightTheme(isCurrentlyDark) },
+                            modifier = Modifier.testTag("top_bar_theme_toggle_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isCurrentlyDark) {
+                                    Icons.Default.LightMode
+                                } else {
+                                    Icons.Default.DarkMode
+                                },
+                                contentDescription = stringResource(id = R.string.action_toggle_theme),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(
                             onClick = { viewModel.openMonthlyReportModal() },
                             modifier = Modifier.testTag("top_bar_report_button")
@@ -330,6 +354,9 @@ fun WageFlowApp(
                                 settings = state.settings,
                                 onSaveSettings = { newSettings ->
                                     viewModel.savePaySettings(newSettings)
+                                },
+                                onSelectThemeMode = { mode ->
+                                    viewModel.setThemeMode(mode)
                                 },
                                 modifier = contentMod
                             )

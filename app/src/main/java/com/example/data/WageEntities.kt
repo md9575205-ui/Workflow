@@ -15,6 +15,18 @@ data class WorkShiftEntity(
     val isSaturdaySalaryPaid: Boolean = false // Used on Saturday date or week tracking
 )
 
+enum class AppThemeMode(val key: String, val label: String) {
+    LIGHT("LIGHT", "Light"),
+    DARK("DARK", "Dark"),
+    SYSTEM("SYSTEM", "System");
+
+    companion object {
+        fun fromKey(key: String?): AppThemeMode {
+            return entries.find { it.key.equals(key, ignoreCase = true) } ?: SYSTEM
+        }
+    }
+}
+
 @Entity(tableName = "pay_settings")
 data class PaySettingsEntity(
     @PrimaryKey val id: Int = 1,
@@ -25,7 +37,8 @@ data class PaySettingsEntity(
     val deductLunchTime: Boolean = true,       // Deduct lunch time from total shift hours
     val defaultStartMinutes: Int = 540,        // 09:00 AM
     val defaultEndMinutes: Int = 1080,         // 06:00 PM
-    val defaultLunchMinutes: Int = 60          // 60 mins lunch
+    val defaultLunchMinutes: Int = 60,         // 60 mins lunch
+    val themeMode: String = "SYSTEM"           // "LIGHT", "DARK", or "SYSTEM"
 )
 
 data class DayCalculation(

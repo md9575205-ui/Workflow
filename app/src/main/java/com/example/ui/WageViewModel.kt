@@ -346,6 +346,23 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
         }
     }
 
+    fun setThemeMode(mode: com.example.data.AppThemeMode) {
+        val current = uiState.value.settings
+        viewModelScope.launch {
+            repository.savePaySettings(current.copy(id = 1, themeMode = mode.key))
+            statusMessageFlow.value = "Switched to ${mode.label} Theme"
+        }
+    }
+
+    fun toggleDarkLightTheme(currentlyDark: Boolean) {
+        val nextMode = if (currentlyDark) {
+            com.example.data.AppThemeMode.LIGHT
+        } else {
+            com.example.data.AppThemeMode.DARK
+        }
+        setThemeMode(nextMode)
+    }
+
     companion object {
         fun provideFactory(repository: WageRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

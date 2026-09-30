@@ -8,6 +8,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -36,7 +38,7 @@ interface WageDao {
 
 @Database(
     entities = [WorkShiftEntity::class, PaySettingsEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class WageDatabase : RoomDatabase() {
@@ -46,13 +48,22 @@ abstract class WageDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: WageDatabase? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pay_settings ADD COLUMN themeMode TEXT NOT NULL DEFAULT 'SYSTEM'")
+            }
+        }
+
         fun getDatabase(context: Context): WageDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     WageDatabase::class.java,
                     "wageflow_database"
-                ).build()
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }
