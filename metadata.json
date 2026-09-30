@@ -1,0 +1,6 @@
+{
+  "name": "WageFlow",
+  "description": "Smart working hours, lunch break, overtime pay, weekly Mon-Sat Saturday salary, and monthly income calculator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

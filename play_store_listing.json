@@ -1,0 +1,53 @@
+{
+  "listing": {
+    "title": "WageFlow: Hours & Salary",
+    "title_length": 24,
+    "short_description": "Track daily working hours, lunch breaks, overtime pay, and weekly salary.",
+    "short_description_length": 73,
+    "full_description": "WageFlow is an offline working hours and salary calculator designed to track daily shifts, lunch breaks, overtime hours, Saturday weekly payouts, and monthly earnings on your device.\n\nKey Features:\n• Daily Shift & Lunch Break Logging: Record shift start and end times, deduct lunch break minutes, and add optional shift notes for each day of the week.\n• Automatic Overtime Calculation: Track regular working hours against your standard daily target and add extra overtime hours with configurable rate multipliers.\n• Monday to Saturday Weekly Salary: View your Monday through Saturday work week summary, total working hours, total lunch time, and Saturday payday totals, and mark weekly payouts as paid.\n• Quick Shift Logging: Log a standard daily shift in one tap or pre-fill an entire Monday to Saturday work week with default shift hours.\n• Monthly Income & Salary Reports: Review monthly earnings, regular versus overtime pay breakdowns, weekly payout summaries, and daily logs across any month.\n• Shareable Salary Statements: Generate formatted plain-text monthly salary statements to copy to your clipboard or share via installed apps.\n• Interactive Wage Calculator & Custom Rates: Customize your hourly wage rate, currency symbol, standard daily hours, default lunch break duration, and overtime multiplier, or run instant pay simulations.\n• Local On-Device Storage: All work logs, weekly payout statuses, and rate settings are stored locally on your device using an offline Room database.",
+    "full_description_length": 1495
+  },
+  "capability_inventory": [
+    {
+      "capability": "App display name ('WageFlow') and zero runtime/install permissions declared",
+      "evidence": "app/src/main/res/values/strings.xml (app_name), app/src/main/AndroidManifest.xml (<application>)"
+    },
+    {
+      "capability": "Daily shift logging with start time, end time, lunch break deduction in minutes, and shift notes",
+      "evidence": "app/src/main/java/com/example/ui/components/ShiftEditorDialog.kt (ShiftEditorDialog), app/src/main/java/com/example/data/WageEntities.kt (WorkDayEntry)"
+    },
+    {
+      "capability": "Automatic regular vs. overtime working hours and pay calculation with configurable standard hours and overtime multiplier",
+      "evidence": "app/src/main/java/com/example/data/WageCalculator.kt (WageCalculator.calculateDay, DailyCalculation)"
+    },
+    {
+      "capability": "Monday to Saturday weekly salary calculation, whole-week hours aggregation, and Saturday payout status toggle",
+      "evidence": "app/src/main/java/com/example/data/WageCalculator.kt (WageCalculator.calculateWeek, WeeklySummary), app/src/main/java/com/example/ui/screens/WeeklyTrackerScreen.kt (WeeklyTrackerScreen, WeeklyHeroCard), app/src/main/java/com/example/ui/WageViewModel.kt (toggleSaturdayPaid)"
+    },
+    {
+      "capability": "One-tap quick shift logging and Monday-to-Saturday bulk week pre-filling",
+      "evidence": "app/src/main/java/com/example/ui/WageViewModel.kt (quickLogStandardDay, fillMonToSatStandardWeek)"
+    },
+    {
+      "capability": "Monthly total income dashboard, regular vs. overtime pay breakdown, and weekly Saturday payout breakdown",
+      "evidence": "app/src/main/java/com/example/data/WageCalculator.kt (WageCalculator.calculateMonth, MonthlySummary), app/src/main/java/com/example/ui/screens/MonthlyReportScreen.kt (MonthlyReportScreen)"
+    },
+    {
+      "capability": "Plain-text monthly salary report generation with Android clipboard copy and system share sheet (Intent.ACTION_SEND)",
+      "evidence": "app/src/main/java/com/example/data/WageCalculator.kt (WageCalculator.buildMonthlyReportText), app/src/main/java/com/example/ui/components/MonthlyReportDialog.kt (MonthlyReportDialog)"
+    },
+    {
+      "capability": "Interactive hourly/overtime wage simulator and configurable rate settings (hourly rate defaulting to ₹40/hr, overtime multiplier, standard daily hours, default lunch minutes, currency symbol)",
+      "evidence": "app/src/main/java/com/example/ui/screens/CalculatorSettingsScreen.kt (CalculatorSettingsScreen), app/src/main/java/com/example/ui/WageViewModel.kt (updateSettings)"
+    },
+    {
+      "capability": "Local offline data persistence for work entries, weekly payout statuses, and user wage settings via Room SQLite database",
+      "evidence": "app/src/main/java/com/example/data/WageDatabase.kt (WageDatabase), app/src/main/java/com/example/data/WageEntities.kt (WorkDayDao, UserWageSettingsDao, WeeklyPayoutDao)"
+    }
+  ],
+  "disclosures_applied": [],
+  "omitted_for_lack_of_evidence": [
+    "Cloud sync, multi-device backup, or employer payroll integration — omitted because all data is stored strictly locally on-device via Room (WageDatabase) with no network or cloud backend calls.",
+    "PDF/Excel file attachment export — omitted because the monthly report generator outputs formatted plain text for clipboard copying and system sharing (Intent.ACTION_SEND) rather than binary PDF/XLSX files."
+  ]
+}

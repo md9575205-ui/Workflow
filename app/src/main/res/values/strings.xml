@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">WageFlow</string>
+    <string name="header_subtitle">Working Hours &amp; Saturday Salary Tracker</string>
+    <string name="nav_weekly">Mon–Sat Week</string>
+    <string name="nav_monthly">Monthly Report</string>
+    <string name="nav_calculator">Calculator &amp; Rate</string>
+
+    <string name="label_hourly_rate">Hourly Rate</string>
+    <string name="label_overtime_rate">Overtime Rate</string>
+    <string name="label_saturday_payday">Saturday Weekly Salary</string>
+    <string name="label_mon_to_sat_income">Mon–Sat Total Income</string>
+    <string name="label_whole_week_hours">Whole Week Total Hours</string>
+    <string name="label_monthly_total_income">Monthly Total Income</string>
+    <string name="label_daily_working_hours">Daily Working Hours</string>
+    <string name="label_lunch_time">Lunch Time</string>
+    <string name="label_daily_income">Daily Income</string>
+    <string name="label_overtime_pay">Overtime Pay</string>
+    <string name="label_regular_pay">Regular Pay</string>
+
+    <string name="action_log_shift">Log Shift</string>
+    <string name="action_quick_8h">+ 8h (₹320)</string>
+    <string name="action_quick_fill_week">Quick Fill Mon–Sat</string>
+    <string name="action_generate_report">Generate Monthly Report</string>
+    <string name="action_share_report">Share Report</string>
+    <string name="action_copy_report">Copy Report</string>
+    <string name="action_save_shift">Save Day Shift</string>
+    <string name="action_delete_shift">Delete Shift</string>
+    <string name="action_save_settings">Save Pay Settings</string>
+    <string name="action_mark_saturday_paid">Saturday Salary Paid</string>
+    <string name="action_mark_saturday_pending">Payday: Saturday</string>
+
+    <string name="empty_month_title">No shifts logged for this month yet</string>
+    <string name="empty_month_subtitle">Tap any day from Monday to Saturday on the Weekly tab or use Quick Fill Mon–Sat to calculate your working hours and salary.</string>
+    <string name="report_copied_message">Monthly salary report copied to clipboard</string>
+    <string name="settings_saved_message">Pay rate and shift settings updated</string>
+</resources>
