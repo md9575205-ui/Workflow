@@ -33,7 +33,11 @@ data class WageUiState(
     val editingDaySlot: DaySlot? = null,
     val showingMonthlyReportModal: Boolean = false,
     val showSundayInWeek: Boolean = false,
-    val statusBannerMessage: String? = null
+    val statusBannerMessage: String? = null,
+    val showingAddAdvanceModal: Boolean = false,
+    val advanceModalDateIso: String = DateHelper.getTodayIso(),
+    val showingSaturdayPaySlipModal: Boolean = false,
+    val showingTimesheetCsvModal: Boolean = false
 )
 
 class WageViewModel(private val repository: WageRepository) : ViewModel() {
@@ -49,6 +53,10 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
     private val showingReportModalFlow = MutableStateFlow(false)
     private val showSundayFlow = MutableStateFlow(false)
     private val statusMessageFlow = MutableStateFlow<String?>(null)
+    private val showingAddAdvanceFlow = MutableStateFlow(false)
+    private val advanceModalDateFlow = MutableStateFlow(todayIso)
+    private val showingSaturdayPaySlipFlow = MutableStateFlow(false)
+    private val showingTimesheetCsvFlow = MutableStateFlow(false)
 
     private data class NavigationState(
         val tab: AppTab,
@@ -57,7 +65,11 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
         val editingDateIso: String?,
         val showReportModal: Boolean,
         val showSunday: Boolean,
-        val statusMessage: String?
+        val statusMessage: String?,
+        val showAddAdvance: Boolean,
+        val advanceDate: String,
+        val showSaturdayPaySlip: Boolean,
+        val showTimesheetCsv: Boolean
     )
 
     private val navStateFlow = combine(
@@ -65,18 +77,52 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
         selectedMondayIsoFlow,
         selectedYearMonthFlow,
         editingDateIsoFlow,
-        combine(showingReportModalFlow, showSundayFlow, statusMessageFlow) { a, b, c -> Triple(a, b, c) }
+        combine(
+            showingReportModalFlow,
+            showSundayFlow,
+            statusMessageFlow,
+            showingAddAdvanceFlow,
+            combine(
+                advanceModalDateFlow,
+                showingSaturdayPaySlipFlow,
+                showingTimesheetCsvFlow
+            ) { date, satSlip, csvModal -> Triple(date, satSlip, csvModal) }
+        ) { a, b, c, d, triple ->
+            NavigationExtras(
+                showReportModal = a,
+                showSunday = b,
+                statusMessage = c,
+                showAddAdvance = d,
+                advanceDate = triple.first,
+                showSaturdayPaySlip = triple.second,
+                showTimesheetCsv = triple.third
+            )
+        }
     ) { tab, mondayIso, yearMonth, editingDateIso, extras ->
         NavigationState(
             tab = tab,
             mondayIso = mondayIso,
             yearMonth = yearMonth,
             editingDateIso = editingDateIso,
-            showReportModal = extras.first,
-            showSunday = extras.second,
-            statusMessage = extras.third
+            showReportModal = extras.showReportModal,
+            showSunday = extras.showSunday,
+            statusMessage = extras.statusMessage,
+            showAddAdvance = extras.showAddAdvance,
+            advanceDate = extras.advanceDate,
+            showSaturdayPaySlip = extras.showSaturdayPaySlip,
+            showTimesheetCsv = extras.showTimesheetCsv
         )
     }
+
+    private data class NavigationExtras(
+        val showReportModal: Boolean,
+        val showSunday: Boolean,
+        val statusMessage: String?,
+        val showAddAdvance: Boolean,
+        val advanceDate: String,
+        val showSaturdayPaySlip: Boolean,
+        val showTimesheetCsv: Boolean
+    )
 
     private val defaultSettings = PaySettingsEntity()
     private val initialWeekSummary = WageCalculator.calculateWeek(
@@ -96,8 +142,9 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
     val uiState: StateFlow<WageUiState> = combine(
         repository.allShifts,
         repository.paySettings,
+        repository.allAdvancesDeductions,
         navStateFlow
-    ) { shifts, storedSettings, nav ->
+    ) { shifts, storedSettings, advances, nav ->
         val settings = storedSettings ?: defaultSettings
         val shiftsByDate = shifts.associateBy { it.dateIso }
 
@@ -105,7 +152,8 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
             mondayDateIso = nav.mondayIso,
             shiftsByDate = shiftsByDate,
             settings = settings,
-            todayIso = todayIso
+            todayIso = todayIso,
+            advancesDeductions = advances
         )
 
         val monthSummary = WageCalculator.calculateMonth(
@@ -113,7 +161,8 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
             month = nav.yearMonth.second,
             allShifts = shifts,
             settings = settings,
-            todayIso = todayIso
+            todayIso = todayIso,
+            allAdvancesDeductions = advances
         )
 
         val editingSlot = nav.editingDateIso?.let { dateIso ->
@@ -143,7 +192,11 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
             editingDaySlot = editingSlot,
             showingMonthlyReportModal = nav.showReportModal,
             showSundayInWeek = nav.showSunday,
-            statusBannerMessage = nav.statusMessage
+            statusBannerMessage = nav.statusMessage,
+            showingAddAdvanceModal = nav.showAddAdvance,
+            advanceModalDateIso = nav.advanceDate,
+            showingSaturdayPaySlipModal = nav.showSaturdayPaySlip,
+            showingTimesheetCsvModal = nav.showTimesheetCsv
         )
     }.stateIn(
         scope = viewModelScope,
@@ -208,6 +261,22 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
         showingReportModalFlow.value = false
     }
 
+    fun openSaturdayPaySlipModal() {
+        showingSaturdayPaySlipFlow.value = true
+    }
+
+    fun closeSaturdayPaySlipModal() {
+        showingSaturdayPaySlipFlow.value = false
+    }
+
+    fun openTimesheetCsvModal() {
+        showingTimesheetCsvFlow.value = true
+    }
+
+    fun closeTimesheetCsvModal() {
+        showingTimesheetCsvFlow.value = false
+    }
+
     fun toggleShowSunday() {
         showSundayFlow.value = !showSundayFlow.value
     }
@@ -218,6 +287,52 @@ class WageViewModel(private val repository: WageRepository) : ViewModel() {
 
     fun showStatusMessage(message: String) {
         statusMessageFlow.value = message
+    }
+
+    fun openAddAdvanceModal(dateIso: String? = null) {
+        advanceModalDateFlow.value = dateIso ?: todayIso
+        showingAddAdvanceFlow.value = true
+    }
+
+    fun closeAddAdvanceModal() {
+        showingAddAdvanceFlow.value = false
+    }
+
+    fun saveAdvanceDeduction(dateIso: String, amountRs: Double, isDeduction: Boolean, note: String) {
+        viewModelScope.launch {
+            repository.upsertAdvanceDeduction(
+                com.example.data.AdvanceDeductionEntity(
+                    dateIso = dateIso,
+                    amountRs = amountRs,
+                    isDeduction = isDeduction,
+                    note = note
+                )
+            )
+            showingAddAdvanceFlow.value = false
+            val label = if (isDeduction) "Expense deduction" else "Cash advance"
+            statusMessageFlow.value = "Saved $label of ${DateHelper.formatRs(amountRs)}"
+        }
+    }
+
+    fun deleteAdvanceDeduction(id: Long) {
+        viewModelScope.launch {
+            repository.deleteAdvanceDeduction(id)
+            statusMessageFlow.value = "Removed entry"
+        }
+    }
+
+    fun saveClockInShift(startMinutes: Int, endMinutes: Int, lunchMinutes: Int) {
+        viewModelScope.launch {
+            saveShift(
+                dateIso = todayIso,
+                startMinutes = startMinutes,
+                endMinutes = endMinutes,
+                lunchMinutes = lunchMinutes,
+                extraOvertimeHours = 0.0,
+                notes = "Logged via Live Shift Clock"
+            )
+            statusMessageFlow.value = "Today's shift logged & saved from Live Clock!"
+        }
     }
 
     fun quickLogStandardDay(dateIso: String) {

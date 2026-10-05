@@ -62,8 +62,11 @@ import com.example.R
 import com.example.data.AppThemeMode
 import com.example.data.DateHelper
 import com.example.data.WageCalculator
+import com.example.ui.components.AdvanceDeductionDialog
 import com.example.ui.components.MonthlyReportDialog
+import com.example.ui.components.SaturdayPaySlipDialog
 import com.example.ui.components.ShiftEditorDialog
+import com.example.ui.components.TimesheetCsvDialog
 import com.example.ui.screens.CalculatorSettingsScreen
 import com.example.ui.screens.MonthlyReportScreen
 import com.example.ui.screens.WeeklyTrackerScreen
@@ -119,6 +122,54 @@ fun WageFlowApp(
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         clipboard?.setPrimaryClip(ClipData.newPlainText("WageFlow Monthly Report", reportBody))
         viewModel.showStatusMessage("Monthly salary report copied to clipboard")
+    }
+
+    val generatedPaySlipText = remember(state.currentWeekSummary, state.settings) {
+        WageCalculator.generateSaturdayPaySlipText(
+            weekSummary = state.currentWeekSummary,
+            settings = state.settings
+        )
+    }
+
+    val generatedCsvText = remember(state.currentMonthSummary, state.settings) {
+        WageCalculator.generateMonthCsv(
+            monthSummary = state.currentMonthSummary,
+            settings = state.settings
+        )
+    }
+
+    val sharePaySlipAction: (String) -> Unit = { slipBody ->
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "WageFlow Saturday Pay Slip - ${state.currentWeekSummary.saturdayDateLabel}")
+            putExtra(Intent.EXTRA_TEXT, slipBody)
+        }
+        val chooser = Intent.createChooser(sendIntent, "Share Saturday Pay Slip")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
+    }
+
+    val copyPaySlipAction: (String) -> Unit = { slipBody ->
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        clipboard?.setPrimaryClip(ClipData.newPlainText("WageFlow Saturday Pay Slip", slipBody))
+        viewModel.showStatusMessage("Weekly Saturday pay slip copied to clipboard")
+    }
+
+    val shareCsvAction: (String) -> Unit = { csvBody ->
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "WageFlow Timesheet CSV - ${state.currentMonthSummary.monthTitle}")
+            putExtra(Intent.EXTRA_TEXT, csvBody)
+        }
+        val chooser = Intent.createChooser(sendIntent, "Share Timesheet CSV")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
+    }
+
+    val copyCsvAction: (String) -> Unit = { csvBody ->
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        clipboard?.setPrimaryClip(ClipData.newPlainText("WageFlow Timesheet CSV", csvBody))
+        viewModel.showStatusMessage("Timesheet CSV copied to clipboard")
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -326,6 +377,10 @@ fun WageFlowApp(
                                 onToggleShowSunday = { viewModel.toggleShowSunday() },
                                 onNavigateToMonthlyReport = { viewModel.selectTab(AppTab.MONTHLY_REPORT) },
                                 onNavigateToRateSettings = { viewModel.selectTab(AppTab.CALCULATOR_SETTINGS) },
+                                onSaveClockShift = { start, end, lunch -> viewModel.saveClockInShift(start, end, lunch) },
+                                onAddAdvanceClick = { viewModel.openAddAdvanceModal(state.currentWeekSummary.saturdayDateIso) },
+                                onDeleteAdvance = { id -> viewModel.deleteAdvanceDeduction(id) },
+                                onOpenSaturdayPaySlip = { viewModel.openSaturdayPaySlipModal() },
                                 modifier = contentMod
                             )
                         }
@@ -345,6 +400,7 @@ fun WageFlowApp(
                                 },
                                 onEditDay = { dateIso -> viewModel.openShiftEditor(dateIso) },
                                 onGoToWeeklyTracker = { viewModel.selectTab(AppTab.WEEKLY_TRACKER) },
+                                onOpenCsvExport = { viewModel.openTimesheetCsvModal() },
                                 modifier = contentMod
                             )
                         }
@@ -396,6 +452,40 @@ fun WageFlowApp(
             onDismiss = { viewModel.closeMonthlyReportModal() },
             onShareReport = { text -> shareReportAction(text) },
             onCopyReport = { text -> copyReportAction(text) }
+        )
+    }
+
+    // Advance / Deduction Record Modal
+    if (state.showingAddAdvanceModal) {
+        AdvanceDeductionDialog(
+            initialDateIso = state.advanceModalDateIso,
+            onDismiss = { viewModel.closeAddAdvanceModal() },
+            onSave = { dateIso, amountRs, isDeduction, note ->
+                viewModel.saveAdvanceDeduction(dateIso, amountRs, isDeduction, note)
+            }
+        )
+    }
+
+    // Saturday Pay Slip Voucher Modal
+    if (state.showingSaturdayPaySlipModal) {
+        SaturdayPaySlipDialog(
+            weekSummary = state.currentWeekSummary,
+            settings = state.settings,
+            paySlipText = generatedPaySlipText,
+            onDismiss = { viewModel.closeSaturdayPaySlipModal() },
+            onShare = { text -> sharePaySlipAction(text) },
+            onCopy = { text -> copyPaySlipAction(text) }
+        )
+    }
+
+    // Monthly Timesheet CSV Export Modal
+    if (state.showingTimesheetCsvModal) {
+        TimesheetCsvDialog(
+            monthSummary = state.currentMonthSummary,
+            csvContent = generatedCsvText,
+            onDismiss = { viewModel.closeTimesheetCsvModal() },
+            onShareCsv = { text -> shareCsvAction(text) },
+            onCopyCsv = { text -> copyCsvAction(text) }
         )
     }
 }

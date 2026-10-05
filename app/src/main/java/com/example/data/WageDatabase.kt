@@ -34,11 +34,23 @@ interface WageDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun savePaySettings(settings: PaySettingsEntity)
+
+    @Query("SELECT * FROM advances_deductions ORDER BY dateIso ASC")
+    fun getAllAdvancesDeductions(): Flow<List<AdvanceDeductionEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAdvanceDeduction(item: AdvanceDeductionEntity)
+
+    @Query("DELETE FROM advances_deductions WHERE id = :id")
+    suspend fun deleteAdvanceDeduction(id: Long)
+
+    @Query("DELETE FROM advances_deductions WHERE dateIso IN (:dateIsos)")
+    suspend fun deleteAdvancesDeductionsByDates(dateIsos: List<String>)
 }
 
 @Database(
-    entities = [WorkShiftEntity::class, PaySettingsEntity::class],
-    version = 2,
+    entities = [WorkShiftEntity::class, PaySettingsEntity::class, AdvanceDeductionEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class WageDatabase : RoomDatabase() {
@@ -54,6 +66,23 @@ abstract class WageDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `advances_deductions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `dateIso` TEXT NOT NULL,
+                        `amountRs` REAL NOT NULL,
+                        `isDeduction` INTEGER NOT NULL,
+                        `note` TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("ALTER TABLE pay_settings ADD COLUMN monthlyTargetGoalRs REAL NOT NULL DEFAULT 10000.0")
+            }
+        }
+
         fun getDatabase(context: Context): WageDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -61,7 +90,7 @@ abstract class WageDatabase : RoomDatabase() {
                     WageDatabase::class.java,
                     "wageflow_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
@@ -74,6 +103,7 @@ abstract class WageDatabase : RoomDatabase() {
 class WageRepository(private val wageDao: WageDao) {
     val allShifts: Flow<List<WorkShiftEntity>> = wageDao.getAllShifts()
     val paySettings: Flow<PaySettingsEntity?> = wageDao.getPaySettings()
+    val allAdvancesDeductions: Flow<List<AdvanceDeductionEntity>> = wageDao.getAllAdvancesDeductions()
 
     suspend fun upsertShift(shift: WorkShiftEntity) {
         wageDao.upsertShift(shift)
@@ -93,5 +123,17 @@ class WageRepository(private val wageDao: WageDao) {
 
     suspend fun savePaySettings(settings: PaySettingsEntity) {
         wageDao.savePaySettings(settings)
+    }
+
+    suspend fun upsertAdvanceDeduction(item: AdvanceDeductionEntity) {
+        wageDao.upsertAdvanceDeduction(item)
+    }
+
+    suspend fun deleteAdvanceDeduction(id: Long) {
+        wageDao.deleteAdvanceDeduction(id)
+    }
+
+    suspend fun deleteAdvancesDeductions(dateIsos: List<String>) {
+        wageDao.deleteAdvancesDeductionsByDates(dateIsos)
     }
 }

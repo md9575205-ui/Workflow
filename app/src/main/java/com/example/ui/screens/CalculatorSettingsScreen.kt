@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
@@ -89,6 +90,9 @@ fun CalculatorSettingsScreen(
     }
     var autoOvertime by remember(settings.autoOvertimeBeyondStandard) {
         mutableStateOf(settings.autoOvertimeBeyondStandard)
+    }
+    var targetGoalText by remember(settings.monthlyTargetGoalRs) {
+        mutableStateOf(settings.monthlyTargetGoalRs.toInt().toString())
     }
 
     val effectiveBaseRate = hourlyRateText.toDoubleOrNull() ?: settings.hourlyRateRs
@@ -538,6 +542,45 @@ fun CalculatorSettingsScreen(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = targetGoalText,
+                        onValueChange = { targetGoalText = it },
+                        label = { Text("Monthly Income Target Goal (₹)") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        supportingText = { Text("Used for Monthly Goal Progress on report screen") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("input_target_goal")
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Quick Goal Presets:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        listOf(8000, 10000, 12000, 15000, 20000).forEach { goal ->
+                            FilterChip(
+                                selected = targetGoalText == goal.toString(),
+                                onClick = { targetGoalText = goal.toString() },
+                                label = { Text("₹$goal") }
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
@@ -546,6 +589,7 @@ fun CalculatorSettingsScreen(
                             val newOt = (overtimeRateText.toDoubleOrNull() ?: newHourly).coerceAtLeast(1.0)
                             val newStdHours = (standardHoursText.toDoubleOrNull() ?: 8.0).coerceIn(1.0, 24.0)
                             val newLunch = (defaultLunchText.toIntOrNull() ?: 60).coerceIn(0, 240)
+                            val newGoal = (targetGoalText.toDoubleOrNull() ?: 10000.0).coerceAtLeast(0.0)
                             onSaveSettings(
                                 settings.copy(
                                     hourlyRateRs = newHourly,
@@ -553,7 +597,8 @@ fun CalculatorSettingsScreen(
                                     standardDailyHours = newStdHours,
                                     defaultLunchMinutes = newLunch,
                                     deductLunchTime = deductLunch,
-                                    autoOvertimeBeyondStandard = autoOvertime
+                                    autoOvertimeBeyondStandard = autoOvertime,
+                                    monthlyTargetGoalRs = newGoal
                                 )
                             )
                         },

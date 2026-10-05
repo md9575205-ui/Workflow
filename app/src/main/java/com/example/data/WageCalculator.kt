@@ -81,10 +81,12 @@ object WageCalculator {
         mondayDateIso: String,
         shiftsByDate: Map<String, WorkShiftEntity>,
         settings: PaySettingsEntity,
-        todayIso: String
+        todayIso: String,
+        advancesDeductions: List<AdvanceDeductionEntity> = emptyList()
     ): WeekSummary {
+        val weekDates = (0..6).map { DateHelper.addDays(mondayDateIso, it) }
         val daySlots = (0..6).map { offset ->
-            val dateIso = DateHelper.addDays(mondayDateIso, offset)
+            val dateIso = weekDates[offset]
             val dayIndex = offset + 1 // 1 = Mon .. 6 = Sat, 7 = Sun
             val shift = shiftsByDate[dateIso]
             val calc = calculateDay(shift, settings)
@@ -127,6 +129,9 @@ object WageCalculator {
         val isPaid = satShift?.isSaturdaySalaryPaid == true ||
             monToSatSlots.any { it.shift?.isSaturdaySalaryPaid == true }
 
+        val weekAdvances = advancesDeductions.filter { it.dateIso in weekDates }
+        val totalAdvancesRs = weekAdvances.sumOf { it.amountRs }
+
         return WeekSummary(
             mondayDateIso = mondayDateIso,
             saturdayDateIso = saturdayIso,
@@ -147,7 +152,10 @@ object WageCalculator {
             wholeWeekOvertimeHours = wholeWeekOvertimeHours,
             wholeWeekOvertimePayRs = wholeWeekOvertimePayRs,
             wholeWeekLunchMinutes = wholeWeekLunchMinutes,
-            isSaturdaySalaryPaid = isPaid
+            isSaturdaySalaryPaid = isPaid,
+            advancesDeductions = weekAdvances,
+            totalAdvancesDeductionsRs = totalAdvancesRs,
+            netSaturdaySalaryRs = monToSatTotalIncomeRs - totalAdvancesRs
         )
     }
 
@@ -156,7 +164,8 @@ object WageCalculator {
         month: Int,
         allShifts: List<WorkShiftEntity>,
         settings: PaySettingsEntity,
-        todayIso: String
+        todayIso: String,
+        allAdvancesDeductions: List<AdvanceDeductionEntity> = emptyList()
     ): MonthSummary {
         val shiftsByDate = allShifts.associateBy { it.dateIso }
         val monthDates = DateHelper.getDaysInMonth(year, month)
@@ -190,10 +199,13 @@ object WageCalculator {
         val totalOvertimePayRs = loggedSlots.sumOf { it.calc.overtimePayRs }
         val totalMonthlyIncomeRs = loggedSlots.sumOf { it.calc.totalDailyIncomeRs }
 
+        val monthAdvances = allAdvancesDeductions.filter { it.dateIso in monthDates }
+        val totalAdvancesRs = monthAdvances.sumOf { it.amountRs }
+
         // Group month's days by their Monday week start so each week's Mon-Sat Saturday salary is shown
         val distinctMondays = monthDates.map { DateHelper.getMondayOfWeek(it) }.distinct()
         val saturdayPayouts = distinctMondays.mapIndexed { idx, mondayIso ->
-            val weekSummary = calculateWeek(mondayIso, shiftsByDate, settings, todayIso)
+            val weekSummary = calculateWeek(mondayIso, shiftsByDate, settings, todayIso, allAdvancesDeductions)
             MonthWeekPayout(
                 weekLabel = "Week ${idx + 1} (${DateHelper.formatDayMonth(mondayIso)} – ${DateHelper.formatDayMonth(weekSummary.saturdayDateIso)})",
                 saturdayLabel = "Payday: Sat, ${DateHelper.formatDayMonth(weekSummary.saturdayDateIso)}",
@@ -203,7 +215,9 @@ object WageCalculator {
                 overtimeHours = weekSummary.monToSatOvertimeHours,
                 lunchMinutes = weekSummary.monToSatLunchMinutes,
                 totalSalaryRs = weekSummary.monToSatTotalIncomeRs,
-                isPaid = weekSummary.isSaturdaySalaryPaid
+                isPaid = weekSummary.isSaturdaySalaryPaid,
+                advancesDeductionsRs = weekSummary.totalAdvancesDeductionsRs,
+                netSalaryRs = weekSummary.netSaturdaySalaryRs
             )
         }
 
@@ -220,7 +234,9 @@ object WageCalculator {
             totalOvertimePayRs = totalOvertimePayRs,
             totalMonthlyIncomeRs = totalMonthlyIncomeRs,
             loggedDaySlots = loggedSlots,
-            saturdayPayouts = saturdayPayouts
+            saturdayPayouts = saturdayPayouts,
+            totalAdvancesDeductionsRs = totalAdvancesRs,
+            netMonthlyIncomeRs = totalMonthlyIncomeRs - totalAdvancesRs
         )
     }
 
@@ -243,16 +259,19 @@ object WageCalculator {
         sb.appendLine("Overtime Hours   : ${DateHelper.formatHours(monthSummary.totalOvertimeHours)}")
         sb.appendLine("Total Work Hours : ${DateHelper.formatHours(monthSummary.totalWorkingHours)}")
         sb.appendLine("Total Lunch Time : ${DateHelper.formatLunchDuration(monthSummary.totalLunchMinutes)}")
-        sb.appendLine("Regular Pay      : ${DateHelper.formatRs(monthSummary.totalRegularPayRs)}")
-        sb.appendLine("Overtime Pay     : ${DateHelper.formatRs(monthSummary.totalOvertimePayRs)}")
-        sb.appendLine("TOTAL MONTH PAY  : ${DateHelper.formatRs(monthSummary.totalMonthlyIncomeRs)}")
+        sb.appendLine("Gross Month Pay  : ${DateHelper.formatRs(monthSummary.totalMonthlyIncomeRs)}")
+        if (monthSummary.totalAdvancesDeductionsRs > 0) {
+            sb.appendLine("Advances / Deds  : -${DateHelper.formatRs(monthSummary.totalAdvancesDeductionsRs)}")
+            sb.appendLine("NET TAKE-HOME    : ${DateHelper.formatRs(monthSummary.netMonthlyIncomeRs)}")
+        }
         sb.appendLine("------------------------------------------")
         sb.appendLine("WEEKLY SATURDAY SALARY PAYOUTS (MON–SAT)")
         monthSummary.saturdayPayouts.forEach { wp ->
             val status = if (wp.isPaid) "[PAID]" else "[DUE SAT]"
+            val advStr = if (wp.advancesDeductionsRs > 0) " (Net: ${DateHelper.formatRs(wp.netSalaryRs)})" else ""
             sb.appendLine(
                 "• ${wp.weekLabel}: ${DateHelper.formatHours(wp.totalHours)} " +
-                    "(OT: ${DateHelper.formatHours(wp.overtimeHours)}) -> ${DateHelper.formatRs(wp.totalSalaryRs)} $status"
+                    "(OT: ${DateHelper.formatHours(wp.overtimeHours)}) -> Gross: ${DateHelper.formatRs(wp.totalSalaryRs)}$advStr $status"
             )
         }
         sb.appendLine("------------------------------------------")
@@ -275,4 +294,78 @@ object WageCalculator {
         sb.appendLine("==========================================")
         return sb.toString()
     }
+
+    fun generateMonthCsv(
+        monthSummary: MonthSummary,
+        settings: PaySettingsEntity
+    ): String {
+        val sb = StringBuilder()
+        sb.appendLine("Date,Day,Start Time,End Time,Lunch Minutes,Regular Hours,Overtime Hours,Total Working Hours,Hourly Rate (Rs),Daily Income (Rs),Notes")
+        monthSummary.loggedDaySlots.forEach { slot ->
+            val shift = slot.shift ?: return@forEach
+            val c = slot.calc
+            val start = DateHelper.formatMinutesToTime(shift.startMinutes)
+            val end = DateHelper.formatMinutesToTime(shift.endMinutes)
+            val safeNote = "\"${shift.notes.replace("\"", "\"\"")}\""
+            sb.appendLine(
+                "${slot.dateIso},${slot.dayNameShort},$start,$end,${c.lunchMinutes}," +
+                    "${DateHelper.formatHours(c.regularHours).removeSuffix("h")}," +
+                    "${DateHelper.formatHours(c.totalOvertimeHours).removeSuffix("h")}," +
+                    "${DateHelper.formatHours(c.totalWorkingHours).removeSuffix("h")}," +
+                    "${c.effectiveHourlyRateRs}," +
+                    "${c.totalDailyIncomeRs},$safeNote"
+            )
+        }
+        return sb.toString()
+    }
+
+    fun generateSaturdayPaySlipText(
+        weekSummary: WeekSummary,
+        settings: PaySettingsEntity
+    ): String {
+        val sb = StringBuilder()
+        sb.appendLine("==========================================")
+        sb.appendLine("      WEEKLY SATURDAY SALARY PAYSLIP      ")
+        sb.appendLine("==========================================")
+        sb.appendLine("Period        : ${weekSummary.weekRangeLabel}")
+        sb.appendLine("Payout Date   : ${weekSummary.saturdayDateLabel}")
+        sb.appendLine("Hourly Rate   : ${DateHelper.formatRs(settings.hourlyRateRs)} / hr")
+        sb.appendLine("Overtime Rate : ${DateHelper.formatRs(settings.overtimeRateRs)} / hr")
+        sb.appendLine("Status        : ${if (weekSummary.isSaturdaySalaryPaid) "PAID [✔]" else "PENDING PAYOUT"}")
+        sb.appendLine("------------------------------------------")
+        sb.appendLine("HOURS & WORK SUMMARY (MON–SAT)")
+        sb.appendLine("Days Worked   : ${weekSummary.monToSatDaysWorked} days")
+        sb.appendLine("Regular Hours : ${DateHelper.formatHours(weekSummary.monToSatRegularHours)} (${DateHelper.formatRs(weekSummary.monToSatRegularPayRs)})")
+        sb.appendLine("Overtime Hours: ${DateHelper.formatHours(weekSummary.monToSatOvertimeHours)} (${DateHelper.formatRs(weekSummary.monToSatOvertimePayRs)})")
+        sb.appendLine("Total Hours   : ${DateHelper.formatHours(weekSummary.monToSatTotalHours)}")
+        sb.appendLine("Lunch Time    : ${DateHelper.formatLunchDuration(weekSummary.monToSatLunchMinutes)}")
+        sb.appendLine("------------------------------------------")
+        sb.appendLine("DAILY BREAKDOWN (MON–SAT)")
+        weekSummary.daySlots.filter { it.dayOfWeekIndex in 1..6 }.forEach { slot ->
+            val shift = slot.shift
+            if (shift == null || !slot.calc.isLogged) {
+                sb.appendLine("• ${slot.dayNameShort} (${slot.dayMonthFormatted}): Day Off / Unlogged")
+            } else {
+                val span = "${DateHelper.formatMinutesToTime(shift.startMinutes)}–${DateHelper.formatMinutesToTime(shift.endMinutes)}"
+                val ot = if (slot.calc.totalOvertimeHours > 0) " +${DateHelper.formatHours(slot.calc.totalOvertimeHours)} OT" else ""
+                sb.appendLine("• ${slot.dayNameShort} (${slot.dayMonthFormatted}): $span | ${DateHelper.formatHours(slot.calc.totalWorkingHours)}$ot | ${DateHelper.formatRs(slot.calc.totalDailyIncomeRs)}")
+            }
+        }
+        sb.appendLine("------------------------------------------")
+        sb.appendLine("SALARY & TAKE-HOME CALCULATION")
+        sb.appendLine("Gross Saturday Salary : ${DateHelper.formatRs(weekSummary.monToSatTotalIncomeRs)}")
+        if (weekSummary.totalAdvancesDeductionsRs > 0) {
+            sb.appendLine("Advances & Deductions : -${DateHelper.formatRs(weekSummary.totalAdvancesDeductionsRs)}")
+            weekSummary.advancesDeductions.forEach { item ->
+                val type = if (item.isDeduction) "Expense Ded" else "Cash Advance"
+                sb.appendLine("  - ${item.dateIso} ($type): -${DateHelper.formatRs(item.amountRs)} [${item.note.ifBlank { "Recorded" }}]")
+            }
+        }
+        sb.appendLine("------------------------------------------")
+        sb.appendLine("NET CASH DUE (SATURDAY): ${DateHelper.formatRs(weekSummary.netSaturdaySalaryRs)}")
+        sb.appendLine("==========================================")
+        sb.appendLine("Generated by WageFlow App")
+        return sb.toString()
+    }
 }
+

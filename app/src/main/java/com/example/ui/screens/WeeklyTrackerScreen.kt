@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Today
@@ -69,6 +70,9 @@ import com.example.data.DaySlot
 import com.example.data.MonthSummary
 import com.example.data.PaySettingsEntity
 import com.example.data.WeekSummary
+import com.example.ui.components.LiveShiftPunchClock
+import com.example.ui.components.WeeklyAdvancesCard
+import com.example.ui.components.WeeklyEarningsBarChart
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -88,6 +92,10 @@ fun WeeklyTrackerScreen(
     onToggleShowSunday: () -> Unit,
     onNavigateToMonthlyReport: () -> Unit,
     onNavigateToRateSettings: () -> Unit,
+    onSaveClockShift: (startMinutes: Int, endMinutes: Int, lunchMinutes: Int) -> Unit = { _, _, _ -> },
+    onAddAdvanceClick: () -> Unit = {},
+    onDeleteAdvance: (Long) -> Unit = {},
+    onOpenSaturdayPaySlip: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val visibleDaySlots = if (showSunday) {
@@ -116,7 +124,15 @@ fun WeeklyTrackerScreen(
             )
         }
 
-        // 2. Week Selector Bar
+        // 2. Live Shift Punch Clock
+        item {
+            LiveShiftPunchClock(
+                hourlyRateRs = settings.hourlyRateRs,
+                onSaveFinishedShift = onSaveClockShift
+            )
+        }
+
+        // 3. Week Selector Bar
         item {
             WeekSelectorCard(
                 weekRangeLabel = weekSummary.weekRangeLabel,
@@ -127,13 +143,32 @@ fun WeeklyTrackerScreen(
             )
         }
 
-        // 3. Mon-Sat Weekly Metrics & Quick Actions Card
+        // 4. Mon-Sat Weekly Metrics & Quick Actions Card
         item {
             WeeklyMetricsGridCard(
                 weekSummary = weekSummary,
                 onQuickFillMonToSat = onQuickFillMonToSat,
                 onClearWeek = onClearWeek,
-                onToggleSaturdayPaid = { onToggleSaturdayPaid(weekSummary.saturdayDateIso) }
+                onToggleSaturdayPaid = { onToggleSaturdayPaid(weekSummary.saturdayDateIso) },
+                onOpenSaturdayPaySlip = onOpenSaturdayPaySlip
+            )
+        }
+
+        // 5. Weekly Daily Earnings Bar Chart
+        item {
+            WeeklyEarningsBarChart(
+                weekSummary = weekSummary,
+                showSunday = showSunday,
+                onDayClick = onEditDay
+            )
+        }
+
+        // 6. Weekly Advances & Deductions Card (Net Saturday Take-Home Pay)
+        item {
+            WeeklyAdvancesCard(
+                weekSummary = weekSummary,
+                onAddAdvanceClick = onAddAdvanceClick,
+                onDeleteAdvance = onDeleteAdvance
             )
         }
 
@@ -303,11 +338,20 @@ private fun HeroPaydayCard(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.testTag("hero_saturday_salary_value")
                         )
-                        Text(
-                            text = "Calculated on ${weekSummary.saturdayDateLabel}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
+                        if (weekSummary.totalAdvancesDeductionsRs > 0) {
+                            Text(
+                                text = "Net Due: ${DateHelper.formatRs(weekSummary.netSaturdaySalaryRs)} (-${DateHelper.formatRs(weekSummary.totalAdvancesDeductionsRs)} adv)",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFDE68A)
+                            )
+                        } else {
+                            Text(
+                                text = "Calculated on ${weekSummary.saturdayDateLabel}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
                     }
 
                     Column(
@@ -425,7 +469,8 @@ private fun WeeklyMetricsGridCard(
     weekSummary: WeekSummary,
     onQuickFillMonToSat: () -> Unit,
     onClearWeek: () -> Unit,
-    onToggleSaturdayPaid: () -> Unit
+    onToggleSaturdayPaid: () -> Unit,
+    onOpenSaturdayPaySlip: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -512,6 +557,19 @@ private fun WeeklyMetricsGridCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Quick Fill Mon–Sat")
+                }
+
+                OutlinedButton(
+                    onClick = onOpenSaturdayPaySlip,
+                    modifier = Modifier.testTag("open_saturday_payslip_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ReceiptLong,
+                        contentDescription = null,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Pay Slip")
                 }
 
                 OutlinedButton(

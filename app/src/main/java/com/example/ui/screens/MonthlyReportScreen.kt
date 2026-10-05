@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Restaurant
@@ -58,6 +59,7 @@ import com.example.data.DaySlot
 import com.example.data.MonthSummary
 import com.example.data.MonthWeekPayout
 import com.example.data.PaySettingsEntity
+import com.example.ui.components.MonthlyGoalCard
 import kotlin.math.abs
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -74,6 +76,7 @@ fun MonthlyReportScreen(
     onSelectOvertimeMultiplier: (Double) -> Unit,
     onEditDay: (String) -> Unit,
     onGoToWeeklyTracker: () -> Unit,
+    onOpenCsvExport: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -136,14 +139,23 @@ fun MonthlyReportScreen(
             }
         }
 
-        // 2. Total Monthly Income & Report Export Hero Card
+        // 2. Monthly Target Goal Tracker Card
+        item {
+            MonthlyGoalCard(
+                monthSummary = monthSummary,
+                targetGoalRs = settings.monthlyTargetGoalRs
+            )
+        }
+
+        // 3. Total Monthly Income & Report Export Hero Card
         item {
             MonthlyOverviewCard(
                 monthSummary = monthSummary,
                 settings = settings,
                 onOpenReportModal = onOpenReportModal,
                 onShareReport = onShareReport,
-                onCopyReport = onCopyReport
+                onCopyReport = onCopyReport,
+                onOpenCsvExport = onOpenCsvExport
             )
         }
 
@@ -246,7 +258,8 @@ private fun MonthlyOverviewCard(
     settings: PaySettingsEntity,
     onOpenReportModal: () -> Unit,
     onShareReport: () -> Unit,
-    onCopyReport: () -> Unit
+    onCopyReport: () -> Unit,
+    onOpenCsvExport: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -394,6 +407,23 @@ private fun MonthlyOverviewCard(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onOpenCsvExport,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("export_timesheet_csv_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FileDownload,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Export Timesheet (CSV)")
             }
         }
     }

@@ -38,4 +38,9 @@
     <string name="theme_light">Light Theme</string>
     <string name="theme_dark">Dark Theme</string>
     <string name="theme_system">System Default</string>
+    <string name="action_saturday_payslip">Saturday Pay Slip</string>
+    <string name="action_export_csv">Export Timesheet (CSV)</string>
+    <string name="label_weekly_earnings_visualizer">Weekly Earnings Visualizer</string>
+    <string name="payslip_copied_message">Weekly Saturday pay slip copied to clipboard</string>
+    <string name="csv_copied_message">Timesheet CSV copied to clipboard</string>
 </resources>

@@ -38,7 +38,17 @@ data class PaySettingsEntity(
     val defaultStartMinutes: Int = 540,        // 09:00 AM
     val defaultEndMinutes: Int = 1080,         // 06:00 PM
     val defaultLunchMinutes: Int = 60,         // 60 mins lunch
-    val themeMode: String = "SYSTEM"           // "LIGHT", "DARK", or "SYSTEM"
+    val themeMode: String = "SYSTEM",          // "LIGHT", "DARK", or "SYSTEM"
+    val monthlyTargetGoalRs: Double = 10000.0  // Monthly target income goal
+)
+
+@Entity(tableName = "advances_deductions")
+data class AdvanceDeductionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val dateIso: String,
+    val amountRs: Double,
+    val isDeduction: Boolean = false, // false = Cash Advance, true = Deduction/Expense
+    val note: String = ""
 )
 
 data class DayCalculation(
@@ -86,13 +96,16 @@ data class WeekSummary(
     val monToSatLunchMinutes: Int,
     val monToSatRegularPayRs: Double,
     val monToSatOvertimePayRs: Double,
-    val monToSatTotalIncomeRs: Double, // Weekly Salary calculated on Saturday
+    val monToSatTotalIncomeRs: Double, // Weekly Gross Salary calculated on Saturday
     val wholeWeekTotalHours: Double,   // Mon–Sun total hours
     val wholeWeekTotalIncomeRs: Double,// Mon–Sun total income
     val wholeWeekOvertimeHours: Double,
     val wholeWeekOvertimePayRs: Double,
     val wholeWeekLunchMinutes: Int,
-    val isSaturdaySalaryPaid: Boolean
+    val isSaturdaySalaryPaid: Boolean,
+    val advancesDeductions: List<AdvanceDeductionEntity> = emptyList(),
+    val totalAdvancesDeductionsRs: Double = 0.0,
+    val netSaturdaySalaryRs: Double = monToSatTotalIncomeRs - totalAdvancesDeductionsRs
 )
 
 data class MonthWeekPayout(
@@ -104,7 +117,9 @@ data class MonthWeekPayout(
     val overtimeHours: Double,
     val lunchMinutes: Int,
     val totalSalaryRs: Double,
-    val isPaid: Boolean
+    val isPaid: Boolean,
+    val advancesDeductionsRs: Double = 0.0,
+    val netSalaryRs: Double = totalSalaryRs - advancesDeductionsRs
 )
 
 data class MonthSummary(
@@ -120,5 +135,7 @@ data class MonthSummary(
     val totalOvertimePayRs: Double,
     val totalMonthlyIncomeRs: Double,
     val loggedDaySlots: List<DaySlot>,
-    val saturdayPayouts: List<MonthWeekPayout>
+    val saturdayPayouts: List<MonthWeekPayout>,
+    val totalAdvancesDeductionsRs: Double = 0.0,
+    val netMonthlyIncomeRs: Double = totalMonthlyIncomeRs - totalAdvancesDeductionsRs
 )
